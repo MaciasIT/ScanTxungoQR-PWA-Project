@@ -1,9 +1,34 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { Scanner } from '@yudiel/react-qr-scanner';
+import { ThemeProvider, createTheme, CssBaseline, Container, Card, CardContent, Typography, Box, CircularProgress, Alert } from '@mui/material';
+import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
+
+// Importar la fuente Roboto
+import '@fontsource/roboto/300.css';
+import '@fontsource/roboto/400.css';
+import '@fontsource/roboto/500.css';
+import '@fontsource/roboto/700.css';
+
+// Crear un tema oscuro personalizado
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: {
+      main: '#90caf9', // Un azul claro como color primario
+    },
+    secondary: {
+      main: '#f48fb1', // Un rosa como color secundario
+    },
+    background: {
+      default: '#121212',
+      paper: '#1e1e1e',
+    },
+  },
+});
 
 const App = () => {
-  const [scannedResult, setScannedResult] = useState('No se ha escaneado nada aún.');
+  const [scannedResult, setScannedResult] = useState('');
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -12,21 +37,16 @@ const App = () => {
     setIsLoading(true);
     setError(null);
     setAnalysisResult(null);
-
     try {
       const response = await fetch('https://scantxungoqr-api.michelmacias-it.workers.dev', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: url }),
       });
-
       if (!response.ok) {
         const errData = await response.json();
         throw new Error(errData.error || 'Error en la respuesta del servidor');
       }
-
       const data = await response.json();
       setAnalysisResult(data);
     } catch (err) {
@@ -39,53 +59,68 @@ const App = () => {
   const handleScan = (detectedCodes) => {
     if (detectedCodes && detectedCodes.length > 0) {
       const url = detectedCodes[0].rawValue;
-      setScannedResult(url);
-      analyzeUrl(url);
+      if (url !== scannedResult) { // Evitar re-análisis de la misma URL
+        setScannedResult(url);
+        analyzeUrl(url);
+      }
     }
   };
 
   const renderAnalysis = () => {
     if (isLoading) {
-      return <p>Analizando...</p>;
+      return <CircularProgress sx={{ mt: 2 }} />;
     }
     if (error) {
-      return <p style={{ color: 'orange' }}>{error}</p>;
+      return <Alert severity="warning" sx={{ mt: 2, wordBreak: 'break-all' }}>{error}</Alert>;
     }
     if (!analysisResult) {
       return null;
     }
 
     const isMalicious = analysisResult.status === 'malicious';
-    const resultColor = isMalicious ? 'red' : 'green';
-
     return (
-      <div style={{ border: `2px solid ${resultColor}`, padding: '10px', borderRadius: '8px', marginTop: '10px' }}>
-        <h3 style={{ color: resultColor, margin: 0 }}>
-          {isMalicious ? '¡Peligro! URL Maliciosa' : 'URL Segura'}
-        </h3>
-        <p>Detectado por {analysisResult.positives} de {analysisResult.total} motores de seguridad.</p>
-      </div>
+      <Alert severity={isMalicious ? 'error' : 'success'} sx={{ mt: 2 }}>
+        {isMalicious ? '¡Peligro! URL Maliciosa' : 'URL Segura'}
+        <br />
+        <small>Detectado por {analysisResult.positives} de {analysisResult.total} motores.</small>
+      </Alert>
     );
   };
 
   return (
-    <div style={{ textAlign: 'center', fontFamily: 'sans-serif', padding: '1em' }}>
-      <h1>Escáner QR PWA</h1>
-      <p>Apunta la cámara a un código QR para escanearlo.</p>
-      <div style={{ maxWidth: '500px', margin: '20px auto', border: '2px solid #ccc', padding: '10px', borderRadius: '8px' }}>
-        <Scanner
-          onScan={handleScan}
-          onError={(e) => setError(e?.message)}
-          components={{ audio: false }}
-          constraints={{ facingMode: 'environment' }}
-        />
-      </div>
-      <div style={{ marginTop: '20px', padding: '10px', background: '#f0f0f0', borderRadius: '8px' }}>
-        <p><strong>URL Escaneada:</strong></p>
-        <p style={{ wordBreak: 'break-all' }}>{scannedResult}</p>
-        {renderAnalysis()}
-      </div>
-    </div>
+    <ThemeProvider theme={darkTheme}>
+      <CssBaseline />
+      <Container maxWidth="sm" sx={{ mt: 4, mb: 4 }}>
+        <Card sx={{ borderRadius: 3, boxShadow: 5 }}>
+          <CardContent sx={{ textAlign: 'center', p: 4 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 2 }}>
+              <QrCodeScannerIcon color="primary" sx={{ fontSize: 40, mr: 1 }} />
+              <Typography variant="h4" component="h1" gutterBottom>
+                ScanTxungoQR
+              </Typography>
+            </Box>
+            <Typography variant="body1" color="text.secondary">
+              Apunta la cámara a un código QR para analizar su seguridad.
+            </Typography>
+            <Box sx={{ maxWidth: '400px', margin: '20px auto', borderRadius: 2, overflow: 'hidden' }}>
+              <Scanner
+                onScan={handleScan}
+                onError={(e) => setError(e?.message)}
+                components={{ audio: false }}
+                constraints={{ facingMode: 'environment' }}
+              />
+            </Box>
+            {scannedResult && (
+              <Box sx={{ mt: 2, p: 2, background: 'rgba(255, 255, 255, 0.05)', borderRadius: 2 }}>
+                <Typography variant="body2" color="text.secondary">URL Escaneada:</Typography>
+                <Typography sx={{ wordBreak: 'break-all' }}>{scannedResult}</Typography>
+              </Box>
+            )}
+            {renderAnalysis()}
+          </CardContent>
+        </Card>
+      </Container>
+    </ThemeProvider>
   );
 };
 
