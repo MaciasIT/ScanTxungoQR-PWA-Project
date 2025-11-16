@@ -34,7 +34,8 @@ const App = () => {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isScanning, setIsScanning] = useState(true); // Nuevo estado para controlar el escáner
+  const [isScanning, setIsScanning] = useState(true);
+  const [debugInfo, setDebugInfo] = useState(''); // Nuevo estado para depuración
 
   const analyzeUrl = async (url) => {
     setIsLoading(true);
@@ -60,11 +61,18 @@ const App = () => {
   };
 
   const handleScan = (detectedCodes) => {
-    if (detectedCodes && detectedCodes.length > 0) {
+    // Guardar siempre la información de depuración
+    setDebugInfo(JSON.stringify(detectedCodes, null, 2));
+
+    if (detectedCodes && detectedCodes.length > 0 && detectedCodes[0].rawValue) {
       const url = detectedCodes[0].rawValue;
       setScannedResult(url);
       setIsScanning(false); // Detener el escaneo después de una lectura exitosa
       analyzeUrl(url);
+    } else {
+        // Si no hay un resultado válido, mostrar un error y detener el escaneo
+        setError('No se pudo decodificar un resultado válido del QR.');
+        setIsScanning(false);
     }
   };
 
@@ -72,6 +80,7 @@ const App = () => {
     setScannedResult('');
     setAnalysisResult(null);
     setError(null);
+    setDebugInfo(''); // Limpiar la información de depuración
     setIsScanning(true); // Reactivar el escaneo
   };
 
@@ -169,6 +178,17 @@ const App = () => {
               </Box>
             )}
             {renderAnalysis()}
+
+            {/* Campo de depuración */} 
+            {debugInfo && (
+              <Box sx={{ mt: 2, p: 2, background: 'rgba(255, 100, 100, 0.1)', borderRadius: 2, textAlign: 'left' }}>
+                <Typography variant="body2" color="text.secondary">INFORMACIÓN DE DEPURACIÓN:</Typography>
+                <Typography component="pre" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                  {debugInfo}
+                </Typography>
+              </Box>
+            )}
+
           </CardContent>
         </Card>
       </Container>
