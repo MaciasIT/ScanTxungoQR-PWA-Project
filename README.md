@@ -25,3 +25,11 @@ Para desplegar este proyecto, necesitarás:
 - Una API Key de VirusTotal.
 
 Sigue las instrucciones en los README de cada subdirectorio para desplegar el backend y luego el frontend.
+
+## Mejoras Futuras (Roadmap)
+
+- [ ] **Informe Detallado de Amenazas:** Mostrar qué motores de seguridad específicos marcaron una URL como maliciosa.
+- [ ] **Historial de Escaneos:** Guardar un historial local de las últimas URLs analizadas.
+- [ ] **Entrada Manual de URL:** Permitir al usuario pegar una URL para analizarla sin usar un QR.
+- [ ] **Mejoras de UX:** Añadir botones para copiar la URL y compartir el resultado del análisis.
+- [ ] **Capacidades PWA Mejoradas:** Implementar un Service Worker para un mejor rendimiento offline.

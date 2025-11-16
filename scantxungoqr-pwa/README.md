@@ -2,6 +2,12 @@
 
 Esta carpeta contiene el código fuente de la Progressive Web App (PWA) construida con React y Vite.
 
+## Stack Tecnológico
+
+- **Framework:** React con Vite
+- **Librería de UI:** Material-UI (MUI)
+- **Escáner QR:** @yudiel/react-qr-scanner
+
 ## Requisitos
 
 - Node.js y npm
@@ -17,6 +23,7 @@ Esta carpeta contiene el código fuente de la Progressive Web App (PWA) construi
     ```bash
     npm install
     ```
+    Esto instalará React, MUI y todas las demás dependencias necesarias listadas en `package.json`.
 
 ## Ejecución en Desarrollo
 
