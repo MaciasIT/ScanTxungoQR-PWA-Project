@@ -1,3 +1,4 @@
 name = "scantxungoqr-api"
 main = "index.js"
 compatibility_date = "2023-10-30"
+compatibility_flags = ["nodejs_compat"]
