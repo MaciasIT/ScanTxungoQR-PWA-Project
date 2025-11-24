@@ -35,9 +35,20 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isScanning, setIsScanning] = useState(true);
-  const [debugInfo, setDebugInfo] = useState(''); // Nuevo estado para depuración
+  const [debugLogs, setDebugLogs] = useState([]); // Array of log strings
+
+  // Helper to add logs with timestamp
+  const addLog = (message) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setDebugLogs((prev) => [`[${timestamp}] ${message}`, ...prev]);
+  };
+
+  React.useEffect(() => {
+    addLog('App mounted. Initializing...');
+  }, []);
 
   const analyzeUrl = async (url) => {
+    addLog(`Starting analysis for URL: ${url}`);
     setIsLoading(true);
     setError(null);
     setAnalysisResult(null);
@@ -47,41 +58,57 @@ const App = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: url }),
       });
+      
       if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.error || 'Error en la respuesta del servidor');
+        const errMsg = errData.error || 'Error en la respuesta del servidor';
+        throw new Error(errMsg);
       }
+      
       const data = await response.json();
+      addLog(`Analysis success: ${JSON.stringify(data)}`);
       setAnalysisResult(data);
     } catch (err) {
-      setError(`Error al analizar la URL: ${err.message}`);
+      const errMsg = `Error al analizar la URL: ${err.message}`;
+      addLog(errMsg);
+      setError(errMsg);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleScan = (detectedCodes) => {
-    // Guardar siempre la información de depuración
-    setDebugInfo(JSON.stringify(detectedCodes, null, 2));
-
     if (detectedCodes && detectedCodes.length > 0 && detectedCodes[0].rawValue) {
       const url = detectedCodes[0].rawValue;
-      setScannedResult(url);
-      setIsScanning(false); // Detener el escaneo después de una lectura exitosa
-      analyzeUrl(url);
+      // Only log if it's a new scan or we are currently scanning
+      if (isScanning) {
+         addLog(`QR Detected: ${url}`);
+         setScannedResult(url);
+         setIsScanning(false); // Stop scanning
+         analyzeUrl(url);
+      }
     } else {
-        // Si no hay un resultado válido, mostrar un error y detener el escaneo
-        setError('No se pudo decodificar un resultado válido del QR.');
-        setIsScanning(false);
+       // Log but don't stop scanning if it's just a frame with no QR
+       // Note: The scanner might fire this often, so maybe only log errors
+       if (detectedCodes?.length > 0) {
+           addLog(`Scan event with no valid URL: ${JSON.stringify(detectedCodes)}`);
+       }
     }
   };
 
+  const handleScanError = (err) => {
+      // Limit error logging to avoid flooding if it's the same error repeatedly?
+      // For now, log everything to be safe.
+      addLog(`Scanner Error: ${err?.message || err}`);
+      // Don't set main error state for minor scanner glitches unless critical
+  };
+
   const handleScanAgain = () => {
+    addLog('User requested: Scan Again');
     setScannedResult('');
     setAnalysisResult(null);
     setError(null);
-    setDebugInfo(''); // Limpiar la información de depuración
-    setIsScanning(true); // Reactivar el escaneo
+    setIsScanning(true);
   };
 
   const renderAnalysis = () => {
@@ -157,7 +184,7 @@ const App = () => {
                 <Box sx={{ maxWidth: '400px', margin: '20px auto', borderRadius: 2, overflow: 'hidden' }}>
                   <Scanner
                     onScan={handleScan}
-                    onError={(e) => setError(e?.message)}
+                    onError={handleScanError}
                     components={{ audio: false, finder: true }}
                     constraints={{ facingMode: 'environment' }}
                   />
@@ -179,15 +206,22 @@ const App = () => {
             )}
             {renderAnalysis()}
 
-            {/* Campo de depuración */} 
-            {debugInfo && (
-              <Box sx={{ mt: 2, p: 2, background: 'rgba(255, 100, 100, 0.1)', borderRadius: 2, textAlign: 'left' }}>
-                <Typography variant="body2" color="text.secondary">INFORMACIÓN DE DEPURACIÓN:</Typography>
-                <Typography component="pre" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                  {debugInfo}
-                </Typography>
+            {/* Debug Log Section */}
+            <Box sx={{ mt: 4, p: 2, background: '#000', borderRadius: 2, textAlign: 'left', maxHeight: '200px', overflowY: 'auto', border: '1px solid #333' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>DEBUG LOGS</Typography>
+                 <Button size="small" onClick={() => setDebugLogs([])} sx={{ fontSize: '0.6rem', minWidth: 'auto' }}>Clear</Button>
               </Box>
-            )}
+              {debugLogs.length === 0 ? (
+                <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>No logs yet...</Typography>
+              ) : (
+                debugLogs.map((log, index) => (
+                  <Typography key={index} variant="caption" display="block" sx={{ fontFamily: 'monospace', color: '#0f0', mb: 0.5 }}>
+                    {log}
+                  </Typography>
+                ))
+              )}
+            </Box>
 
           </CardContent>
         </Card>
