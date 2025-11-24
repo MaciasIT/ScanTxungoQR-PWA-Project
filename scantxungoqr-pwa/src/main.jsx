@@ -93,6 +93,8 @@ const App = () => {
 
   const handleScanError = (err) => {
     console.error(err);
+    setError(`Error con la cámara: ${err?.message || err}`);
+    setIsScanning(false);
   };
 
   const handleScanAgain = () => {
