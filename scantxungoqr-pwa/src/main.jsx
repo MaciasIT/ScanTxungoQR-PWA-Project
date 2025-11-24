@@ -35,20 +35,8 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isScanning, setIsScanning] = useState(true);
-  const [debugLogs, setDebugLogs] = useState([]); // Array of log strings
-
-  // Helper to add logs with timestamp
-  const addLog = (message) => {
-    const timestamp = new Date().toLocaleTimeString();
-    setDebugLogs((prev) => [`[${timestamp}] ${message}`, ...prev]);
-  };
-
-  React.useEffect(() => {
-    addLog('App mounted. Initializing...');
-  }, []);
 
   const analyzeUrl = async (url) => {
-    addLog(`Starting analysis for URL: ${url}`);
     setIsLoading(true);
     setError(null);
     setAnalysisResult(null);
@@ -66,11 +54,9 @@ const App = () => {
       }
 
       const data = await response.json();
-      addLog(`Analysis success: ${JSON.stringify(data)}`);
       setAnalysisResult(data);
     } catch (err) {
       const errMsg = `Error al analizar la URL: ${err.message}`;
-      addLog(errMsg);
       setError(errMsg);
     } finally {
       setIsLoading(false);
@@ -92,11 +78,7 @@ const App = () => {
 
       // Only process if we are currently scanning
       if (isScanning) {
-        addLog(`Code Detected: ${rawValue}`);
-
         if (!isValidUrl(rawValue)) {
-          const errorMsg = `El código escaneado no es una URL válida: ${rawValue}`;
-          addLog(errorMsg);
           setError("El código escaneado no parece ser una URL web (http/https).");
           setIsScanning(false); // Stop scanning so user can see the error
           return;
@@ -106,19 +88,14 @@ const App = () => {
         setIsScanning(false); // Stop scanning
         analyzeUrl(rawValue);
       }
-    } else {
-      if (detectedCodes?.length > 0) {
-        addLog(`Scan event with no valid data: ${JSON.stringify(detectedCodes)}`);
-      }
     }
   };
 
   const handleScanError = (err) => {
-    addLog(`Scanner Error: ${err?.message || err}`);
+    console.error(err);
   };
 
   const handleScanAgain = () => {
-    addLog('User requested: Scan Again');
     setScannedResult('');
     setAnalysisResult(null);
     setError(null);
@@ -146,6 +123,7 @@ const App = () => {
           severity={isMalicious ? 'error' : 'success'}
           action={!isMalicious && (
             <Button
+              component="a"
               color="inherit"
               size="small"
               href={scannedResult}
@@ -225,23 +203,6 @@ const App = () => {
               </Box>
             )}
             {renderAnalysis()}
-
-            {/* Debug Log Section */}
-            <Box sx={{ mt: 4, p: 2, background: '#000', borderRadius: 2, textAlign: 'left', maxHeight: '200px', overflowY: 'auto', border: '1px solid #333' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>DEBUG LOGS</Typography>
-                <Button size="small" onClick={() => setDebugLogs([])} sx={{ fontSize: '0.6rem', minWidth: 'auto' }}>Clear</Button>
-              </Box>
-              {debugLogs.length === 0 ? (
-                <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>No logs yet...</Typography>
-              ) : (
-                debugLogs.map((log, index) => (
-                  <Typography key={index} variant="caption" display="block" sx={{ fontFamily: 'monospace', color: '#0f0', mb: 0.5 }}>
-                    {log}
-                  </Typography>
-                ))
-              )}
-            </Box>
 
           </CardContent>
         </Card>
