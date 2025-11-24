@@ -58,13 +58,13 @@ const App = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: url }),
       });
-      
+
       if (!response.ok) {
         const errData = await response.json();
         const errMsg = errData.error || 'Error en la respuesta del servidor';
         throw new Error(errMsg);
       }
-      
+
       const data = await response.json();
       addLog(`Analysis success: ${JSON.stringify(data)}`);
       setAnalysisResult(data);
@@ -77,30 +77,44 @@ const App = () => {
     }
   };
 
+  const isValidUrl = (string) => {
+    try {
+      const url = new URL(string);
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch (_) {
+      return false;
+    }
+  };
+
   const handleScan = (detectedCodes) => {
     if (detectedCodes && detectedCodes.length > 0 && detectedCodes[0].rawValue) {
-      const url = detectedCodes[0].rawValue;
-      // Only log if it's a new scan or we are currently scanning
+      const rawValue = detectedCodes[0].rawValue;
+
+      // Only process if we are currently scanning
       if (isScanning) {
-         addLog(`QR Detected: ${url}`);
-         setScannedResult(url);
-         setIsScanning(false); // Stop scanning
-         analyzeUrl(url);
+        addLog(`Code Detected: ${rawValue}`);
+
+        if (!isValidUrl(rawValue)) {
+          const errorMsg = `El código escaneado no es una URL válida: ${rawValue}`;
+          addLog(errorMsg);
+          setError("El código escaneado no parece ser una URL web (http/https).");
+          setIsScanning(false); // Stop scanning so user can see the error
+          return;
+        }
+
+        setScannedResult(rawValue);
+        setIsScanning(false); // Stop scanning
+        analyzeUrl(rawValue);
       }
     } else {
-       // Log but don't stop scanning if it's just a frame with no QR
-       // Note: The scanner might fire this often, so maybe only log errors
-       if (detectedCodes?.length > 0) {
-           addLog(`Scan event with no valid URL: ${JSON.stringify(detectedCodes)}`);
-       }
+      if (detectedCodes?.length > 0) {
+        addLog(`Scan event with no valid data: ${JSON.stringify(detectedCodes)}`);
+      }
     }
   };
 
   const handleScanError = (err) => {
-      // Limit error logging to avoid flooding if it's the same error repeatedly?
-      // For now, log everything to be safe.
-      addLog(`Scanner Error: ${err?.message || err}`);
-      // Don't set main error state for minor scanner glitches unless critical
+    addLog(`Scanner Error: ${err?.message || err}`);
   };
 
   const handleScanAgain = () => {
@@ -122,7 +136,10 @@ const App = () => {
       return null;
     }
 
-    const isMalicious = analysisResult.positives > 0;
+    const positives = analysisResult.positives || 0;
+    const total = analysisResult.total || 0;
+    const isMalicious = positives > 0;
+
     return (
       <Box sx={{ mt: 2, textAlign: 'left' }}>
         <Alert
@@ -140,7 +157,9 @@ const App = () => {
           )}
         >
           <Typography variant="body1" component="div"><b>{isMalicious ? '¡Peligro! URL Maliciosa' : 'URL Segura'}</b></Typography>
-          <small>Detectado por {analysisResult.positives} de {analysisResult.total} motores.</small>
+          {total > 0 && (
+            <small>Detectado por {positives} de {total} motores.</small>
+          )}
         </Alert>
 
         {isMalicious && analysisResult.details && analysisResult.details.length > 0 && (
@@ -175,7 +194,7 @@ const App = () => {
                 ScanTxungoQR
               </Typography>
             </Box>
-            
+
             {isScanning ? (
               <>
                 <Typography variant="body1" color="text.secondary">
@@ -187,6 +206,7 @@ const App = () => {
                     onError={handleScanError}
                     components={{ audio: false, finder: true }}
                     constraints={{ facingMode: 'environment' }}
+                    formats={['qr_code']}
                   />
                 </Box>
               </>
@@ -209,8 +229,8 @@ const App = () => {
             {/* Debug Log Section */}
             <Box sx={{ mt: 4, p: 2, background: '#000', borderRadius: 2, textAlign: 'left', maxHeight: '200px', overflowY: 'auto', border: '1px solid #333' }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>DEBUG LOGS</Typography>
-                 <Button size="small" onClick={() => setDebugLogs([])} sx={{ fontSize: '0.6rem', minWidth: 'auto' }}>Clear</Button>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>DEBUG LOGS</Typography>
+                <Button size="small" onClick={() => setDebugLogs([])} sx={{ fontSize: '0.6rem', minWidth: 'auto' }}>Clear</Button>
               </Box>
               {debugLogs.length === 0 ? (
                 <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>No logs yet...</Typography>
