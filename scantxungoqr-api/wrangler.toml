@@ -1,0 +1,9 @@
+name = "scantxungoqr-api"
+main = "index.js"
+compatibility_date = "2023-10-30"
+compatibility_flags = ["nodejs_compat"]
+
+[[kv_namespaces]]
+binding = "SCANTXUNGO_CACHE"
+id = "f85d6d810c25437abb9f3d9ba1eceb64"
+preview_id = "12545a1f11704f1fb29fe966e97e2709"
