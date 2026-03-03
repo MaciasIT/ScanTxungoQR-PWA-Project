@@ -1,8 +1,17 @@
 export async function onRequestPost(context) {
   const { request, env } = context;
 
+  // CORS — Restrict to allowed origins only
+  const ALLOWED_ORIGINS = [
+    'https://scantxungoqr.pages.dev',
+    'https://scantxungoqr.com',
+    'http://localhost:5173', // Dev only
+  ];
+  const requestOrigin = request.headers.get('Origin') || '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(requestOrigin) ? requestOrigin : ALLOWED_ORIGINS[0];
+
   const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
@@ -24,8 +33,8 @@ export async function onRequestPost(context) {
     const vtApiKey = env.VIRUSTOTAL_API_KEY;
     if (!vtApiKey) {
       return new Response(JSON.stringify({ error: 'La clave de la API de VirusTotal no está configurada' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -64,9 +73,9 @@ export async function onRequestPost(context) {
     } else {
       vtData = await vtResponse.json();
     }
-    
+
     if (!vtData || !vtData.data || !vtData.data.attributes) {
-        throw new Error('Respuesta inesperada de VirusTotal: faltan datos.');
+      throw new Error('Respuesta inesperada de VirusTotal: faltan datos.');
     }
 
     const stats = vtData.data.attributes.last_analysis_stats;
@@ -90,7 +99,8 @@ export async function onRequestPost(context) {
     });
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('[ScanTxungoQR PWA Error]', error.message);
+    return new Response(JSON.stringify({ error: 'An internal error occurred. Please try again later.' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

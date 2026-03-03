@@ -1,8 +1,16 @@
 export default {
     async fetch(request, env, ctx) {
-        // 1. Handle CORS
+        // 1. Handle CORS — Restrict to allowed origins only
+        const ALLOWED_ORIGINS = [
+            "https://scantxungoqr.pages.dev",
+            "https://scantxungoqr.com",
+            "http://localhost:5173", // Dev only
+        ];
+        const requestOrigin = request.headers.get("Origin") || "";
+        const allowedOrigin = ALLOWED_ORIGINS.includes(requestOrigin) ? requestOrigin : ALLOWED_ORIGINS[0];
+
         const corsHeaders = {
-            "Access-Control-Allow-Origin": "*", // Allow all origins for now (or restrict to your Pages URL)
+            "Access-Control-Allow-Origin": allowedOrigin,
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
         };
@@ -46,11 +54,14 @@ export default {
             await env.SCANTXUNGO_CACHE.put(rateKey, (rateCount + 1).toString(), { expirationTtl: 60 });
             // ---------------------
 
-            // Normalize URL (e.g. add trailing slash) to match VT keys
+            // Normalize and validate URL
             try {
                 url = new URL(url).toString();
             } catch (e) {
-                // If invalid URL, proceed as is and let it fail later or be rejected
+                return new Response(JSON.stringify({ error: "Invalid URL format" }), {
+                    status: 400,
+                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
             }
 
             const apiKey = env.VIRUSTOTAL_API_KEY;
@@ -151,7 +162,9 @@ export default {
             });
 
         } catch (error) {
-            return new Response(JSON.stringify({ error: error.message }), {
+            // Log internally but don't expose to client
+            console.error("[ScanTxungoQR API Error]", error.message);
+            return new Response(JSON.stringify({ error: "An internal error occurred. Please try again later." }), {
                 status: 500,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
