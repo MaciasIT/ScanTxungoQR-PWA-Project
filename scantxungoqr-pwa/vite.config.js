@@ -40,4 +40,9 @@ export default defineConfig({
       },
     },
   },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/setupTests.js', // Although not strictly required, good practice or we can omit setupFiles if not asked
+  },
 });
