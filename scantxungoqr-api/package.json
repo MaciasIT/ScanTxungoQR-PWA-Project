@@ -4,12 +4,14 @@
     "description": "Backend for ScanTxungoQR PWA",
     "main": "index.js",
     "scripts": {
+        "test": "vitest run",
         "deploy": "wrangler deploy"
     },
     "keywords": [],
     "author": "",
     "license": "ISC",
     "devDependencies": {
+        "vitest": "^4.0.18",
         "wrangler": "^4.71.0"
     }
 }

@@ -65,11 +65,12 @@
 
 | Tarea | Estado | Notas |
 |-------|--------|-------|
-| 4.1 Configurar Vitest | ⬜ Pendiente | TD-003 |
-| 4.2 Tests unitarios para hooks y servicios | ⬜ Pendiente | |
-| 4.3 Tests de integración para API Worker | ⬜ Pendiente | |
-| 4.4 Configurar `npm audit` | ⬜ Pendiente | SEC-012 |
-| 4.5 Commit final | ⬜ Pendiente | |
+| 4.1 Configurar Vitest | ✅ | TD-003 — jsdom, setupTests.js añadidos |
+| 4.2 Tests unitarios para hooks y servicios | ✅ | `urlValidator.test.js` y `useHistory.test.js` pasados con éxito |
+| 4.3 Tests de integración para API Worker | ✅ | |
+| 4.4 Configurar `npm audit` | ✅ | SEC-012 — API limpio. PWA con vulnerabilidades bloqueadas por versión de Vite |
+| 4.5 Pre-commit / Script de seguridad | ✅ | `validate.sh` creado como script integral de QA y Seguridad |
+| 4.6 Commit final | ⬜ Pendiente (Commit de seguridad hecho) |
 
 ---
 
