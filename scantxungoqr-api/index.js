@@ -1,57 +1,104 @@
 export default {
     async fetch(request, env, ctx) {
-        // 1. Handle CORS — Restrict to allowed origins only
+        // --- Security Headers (SEC-011) ---
+        // Applied to ALL responses from this Worker.
+        const securityHeaders = {
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+        };
+
+        // --- CORS (SEC-010) — Strict origin validation ---
         const ALLOWED_ORIGINS = [
             "https://scantxungoqr.pages.dev",
             "https://scantxungoqr.com",
-            "http://localhost:5173", // Dev only
         ];
+
+        // Only allow localhost in development environment
+        if (env.ENVIRONMENT === "development") {
+            ALLOWED_ORIGINS.push("http://localhost:5173");
+        }
+
         const requestOrigin = request.headers.get("Origin") || "";
-        const allowedOrigin = ALLOWED_ORIGINS.includes(requestOrigin) ? requestOrigin : ALLOWED_ORIGINS[0];
+
+        // Reject unauthorized origins with 403
+        if (requestOrigin && !ALLOWED_ORIGINS.includes(requestOrigin)) {
+            return new Response(JSON.stringify({ error: "Forbidden" }), {
+                status: 403,
+                headers: { ...securityHeaders, "Content-Type": "application/json" },
+            });
+        }
 
         const corsHeaders = {
-            "Access-Control-Allow-Origin": allowedOrigin,
+            "Access-Control-Allow-Origin": requestOrigin || ALLOWED_ORIGINS[0],
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
         };
 
+        // Merge security + CORS for convenience
+        const responseHeaders = { ...securityHeaders, ...corsHeaders };
+
         if (request.method === "OPTIONS") {
-            return new Response(null, { headers: corsHeaders });
+            return new Response(null, { headers: responseHeaders });
         }
 
         if (request.method !== "POST") {
-            return new Response("Method Not Allowed", { status: 405, headers: corsHeaders });
+            return new Response("Method Not Allowed", { status: 405, headers: responseHeaders });
         }
 
         try {
+            // --- Content-Type Validation (SEC-003) ---
+            const contentType = request.headers.get("Content-Type") || "";
+            if (!contentType.includes("application/json")) {
+                return new Response(JSON.stringify({ error: "Unsupported Media Type" }), {
+                    status: 415,
+                    headers: { ...responseHeaders, "Content-Type": "application/json" },
+                });
+            }
+
+            // --- Body Size Limit (SEC-009) ---
+            // A URL payload should never exceed 2KB (2048 bytes)
+            const contentLength = parseInt(request.headers.get("Content-Length") || "0", 10);
+            if (contentLength > 2048) {
+                return new Response(JSON.stringify({ error: "Payload Too Large" }), {
+                    status: 413,
+                    headers: { ...responseHeaders, "Content-Type": "application/json" },
+                });
+            }
+
             // 2. Parse Request
             let { url } = await request.json();
             if (!url) {
                 return new Response(JSON.stringify({ error: "URL is required" }), {
                     status: 400,
-                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                    headers: { ...responseHeaders, "Content-Type": "application/json" },
                 });
             }
 
-            // --- RATE LIMITING ---
+            // --- RATE LIMITING (SEC-002) — Sliding window approach ---
+            // Uses a time-bucketed key to create a sliding window.
+            // NOTE: KV is eventually consistent and not atomic. This is best-effort
+            // rate limiting — sufficient for abuse prevention but not a hard guarantee.
             const ip = request.headers.get("CF-Connecting-IP") || "unknown";
-            const rateKey = `rate:${ip}`;
+            const minuteSlot = Math.floor(Date.now() / 60000);
+            const rateKey = `rate:${ip}:${minuteSlot}`;
 
-            // Increment the count for this IP. 
-            // Since KV doesn't have atomic increment, we get, increment, and put.
-            // This is "soft" rate limiting (race conditions possible), but sufficient for abuse prevention.
             let rateCount = await env.SCANTXUNGO_CACHE.get(rateKey);
-            rateCount = rateCount ? parseInt(rateCount) : 0;
+            rateCount = rateCount ? parseInt(rateCount, 10) : 0;
 
-            if (rateCount >= 10) { // Limit: 10 requests per minute
-                return new Response(JSON.stringify({ error: "Rate limit exceeded. Try again in a minute." }), {
+            if (rateCount >= 10) { // Limit: 10 requests per minute window
+                return new Response(JSON.stringify({ error: "Rate limit exceeded. Try again later." }), {
                     status: 429,
-                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                    headers: {
+                        ...responseHeaders,
+                        "Content-Type": "application/json",
+                        "Retry-After": "60",
+                    },
                 });
             }
 
-            // Update stats (expiration 60s)
-            await env.SCANTXUNGO_CACHE.put(rateKey, (rateCount + 1).toString(), { expirationTtl: 60 });
+            // Increment counter with 120s TTL (covers current + next window)
+            await env.SCANTXUNGO_CACHE.put(rateKey, (rateCount + 1).toString(), { expirationTtl: 120 });
             // ---------------------
 
             // Normalize and validate URL
@@ -60,15 +107,17 @@ export default {
             } catch (e) {
                 return new Response(JSON.stringify({ error: "Invalid URL format" }), {
                     status: 400,
-                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                    headers: { ...responseHeaders, "Content-Type": "application/json" },
                 });
             }
 
+            // --- API Key Check (SEC-004) — No architecture details exposed ---
             const apiKey = env.VIRUSTOTAL_API_KEY;
             if (!apiKey) {
-                return new Response(JSON.stringify({ error: "Server misconfiguration: Missing API Key" }), {
-                    status: 500,
-                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                console.error("[ScanTxungoQR] Missing VIRUSTOTAL_API_KEY");
+                return new Response(JSON.stringify({ error: "Service temporarily unavailable" }), {
+                    status: 503,
+                    headers: { ...responseHeaders, "Content-Type": "application/json" },
                 });
             }
 
@@ -88,7 +137,7 @@ export default {
                     ...cachedResult,
                     cached: true // Helper flag for frontend
                 }), {
-                    headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "HIT" },
+                    headers: { ...responseHeaders, "Content-Type": "application/json", "X-Cache": "HIT" },
                 });
             }
 
@@ -112,8 +161,10 @@ export default {
                 });
 
                 if (!scanResponse.ok) {
+                    // Log error internally, don't expose to client
                     const errText = await scanResponse.text();
-                    throw new Error(`Failed to submit URL for scanning: ${errText}`);
+                    console.error("[ScanTxungoQR] VT scan submit failed:", errText);
+                    throw new Error("Upstream scan service unavailable");
                 }
 
                 // Return a "pending" status
@@ -123,13 +174,15 @@ export default {
                     details: ["Scan started. Please try again in a few seconds."],
                     status: "queued"
                 }), {
-                    headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "MISS" },
+                    headers: { ...responseHeaders, "Content-Type": "application/json", "X-Cache": "MISS" },
                 });
             }
 
             if (!vtResponse.ok) {
+                // Log error internally, don't expose to client
                 const errText = await vtResponse.text();
-                throw new Error(`VirusTotal API Error: ${vtResponse.status} ${errText}`);
+                console.error("[ScanTxungoQR] VT API error:", vtResponse.status, errText);
+                throw new Error("Upstream analysis service unavailable");
             }
 
             const vtData = await vtResponse.json();
@@ -158,15 +211,15 @@ export default {
 
             // 5. Return Result
             return new Response(JSON.stringify(finalResult), {
-                headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "MISS" },
+                headers: { ...responseHeaders, "Content-Type": "application/json", "X-Cache": "MISS" },
             });
 
         } catch (error) {
-            // Log internally but don't expose to client
+            // Log internally but never expose internal details to client
             console.error("[ScanTxungoQR API Error]", error.message);
             return new Response(JSON.stringify({ error: "An internal error occurred. Please try again later." }), {
                 status: 500,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                headers: { ...responseHeaders, "Content-Type": "application/json" },
             });
         }
     },
