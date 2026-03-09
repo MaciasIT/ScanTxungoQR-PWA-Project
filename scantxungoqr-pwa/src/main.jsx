@@ -174,7 +174,7 @@ const App = () => {
     setAnalysisResult(null);
 
     try {
-      const response = await fetch('https://scantxungoqr-api.michelmacias-it.workers.dev', {
+      const response = await fetch(import.meta.env.VITE_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: url }),
