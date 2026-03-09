@@ -22,7 +22,7 @@
     "jsqr": "^1.4.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "vite-plugin-pwa": "^1.2.0"
+    "vite-plugin-pwa": "^0.20.0"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
