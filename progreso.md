@@ -61,7 +61,7 @@
 
 ---
 
-## Paso 4 — Tests y CI (ambos agentes) ⬜
+## Paso 4 — Tests y CI (ambos agentes) ✅
 
 | Tarea | Estado | Notas |
 |-------|--------|-------|
@@ -70,7 +70,7 @@
 | 4.3 Tests de integración para API Worker | ✅ | |
 | 4.4 Configurar `npm audit` | ✅ | SEC-012 — API limpio. PWA con vulnerabilidades bloqueadas por versión de Vite |
 | 4.5 Pre-commit / Script de seguridad | ✅ | `validate.sh` creado como script integral de QA y Seguridad |
-| 4.6 Commit final | ⬜ Pendiente (Commit de seguridad hecho) |
+| 4.6 Commit final | ✅ | `chore: complete security and technical debt refactoring process` |
 
 ---
 
