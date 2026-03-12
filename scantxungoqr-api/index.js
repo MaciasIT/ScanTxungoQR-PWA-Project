@@ -97,8 +97,11 @@ export default {
                 });
             }
 
-            // Increment counter with 120s TTL (covers current + next window)
-            await env.SCANTXUNGO_CACHE.put(rateKey, (rateCount + 1).toString(), { expirationTtl: 120 });
+            // Increment counter with 120s TTL (covers current + next window) in background
+            ctx.waitUntil(
+                env.SCANTXUNGO_CACHE.put(rateKey, (rateCount + 1).toString(), { expirationTtl: 120 })
+                    .catch(err => console.error("KV rate limit update failed:", err))
+            );
             // ---------------------
 
             // Normalize and validate URL
@@ -206,8 +209,11 @@ export default {
             };
 
             // --- SAVE TO CACHE ---
-            // Cache successful results for 24 hours (86400 seconds)
-            await env.SCANTXUNGO_CACHE.put(urlId, JSON.stringify(finalResult), { expirationTtl: 86400 });
+            // Cache successful results for 24 hours (86400 seconds) in background
+            ctx.waitUntil(
+                env.SCANTXUNGO_CACHE.put(urlId, JSON.stringify(finalResult), { expirationTtl: 86400 })
+                    .catch(err => console.error("KV cache save failed:", err))
+            );
 
             // 5. Return Result
             return new Response(JSON.stringify(finalResult), {
