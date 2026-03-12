@@ -25,7 +25,14 @@ const HistoryTab = ({ history, onCopyToClipboard }) => (
               mb: 1,
               bgcolor: 'rgba(255,255,255,0.03)',
               borderRadius: 2,
-              borderLeft: `4px solid ${item.malicious ? '#ff1744' : '#00e676'}`
+              borderLeft: `4px solid ${item.malicious ? '#ff1744' : '#00e676'}`,
+              transition: 'all 0.2s ease-in-out',
+              cursor: 'pointer',
+              '&:hover': {
+                bgcolor: 'rgba(255,255,255,0.08)',
+                transform: 'translateY(-2px)',
+                boxShadow: item.malicious ? '0 4px 12px rgba(255, 23, 68, 0.15)' : '0 4px 12px rgba(0, 230, 118, 0.15)'
+              }
             }}
             secondaryAction={
               <IconButton edge="end" aria-label="copy" onClick={() => onCopyToClipboard(item.url)}>

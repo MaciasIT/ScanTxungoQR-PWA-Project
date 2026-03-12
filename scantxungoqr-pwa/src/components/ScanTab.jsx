@@ -1,12 +1,12 @@
-import React, { useRef } from 'react';
-import { Box, Typography, Button } from '@mui/material';
-import { Scanner } from '@yudiel/react-qr-scanner';
-import jsQR from 'jsqr';
+import React, { useRef, Suspense } from 'react';
+import { Box, Typography, Button, CircularProgress } from '@mui/material';
 import ReplayIcon from '@mui/icons-material/Replay';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { motion } from 'framer-motion';
 import AnalysisResult from './AnalysisResult';
 
+// Lazy loading the heavy QR scanner component
+const Scanner = React.lazy(() => import('@yudiel/react-qr-scanner').then(module => ({ default: module.Scanner })));
 const ScanTab = ({
   scannedResult,
   isScanning,
@@ -31,19 +31,28 @@ const ScanTab = ({
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         canvas.width = img.width;
         canvas.height = img.height;
         context.drawImage(img, 0, 0, img.width, img.height);
         const imageData = context.getImageData(0, 0, img.width, img.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
 
-        if (code) {
-          onProcessUrl(code.data);
-        } else {
-          onSetError("No se detectó ningún código QR en la imagen.");
+        try {
+          // Dinamically import jsQR only when an image is uploaded
+          const jsQRModule = await import('jsqr');
+          const jsQR = jsQRModule.default;
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+          if (code) {
+            onProcessUrl(code.data);
+          } else {
+            onSetError("No se detectó ningún código QR en la imagen.");
+          }
+        } catch (err) {
+          console.error("Failed to load jsQR dynamically", err);
+          onSetError("Ocurrió un error al procesar la imagen.");
         }
       };
       img.src = e.target.result;
@@ -77,13 +86,15 @@ const ScanTab = ({
             transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
           />
 
-          <Scanner
-            onScan={onScan}
-            onError={onScanError}
-            components={{ audio: false, finder: false }}
-            constraints={{ facingMode: 'environment' }}
-            formats={['qr_code']}
-          />
+          <Suspense fallback={<Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CircularProgress sx={{ color: '#00e5ff' }} /></Box>}>
+            <Scanner
+              onScan={onScan}
+              onError={onScanError}
+              components={{ audio: false, finder: false }}
+              constraints={{ facingMode: 'environment' }}
+              formats={['qr_code']}
+            />
+          </Suspense>
         </Box>
 
         <input

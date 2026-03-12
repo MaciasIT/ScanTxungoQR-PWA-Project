@@ -1,7 +1,7 @@
 import React from 'react';
 import {
-  Box, Typography, CircularProgress, Alert, Button, IconButton, Paper,
-  Accordion, AccordionSummary, AccordionDetails, List, ListItem, ListItemText,
+  Box, Typography, Alert, Button, IconButton, Paper,
+  Accordion, AccordionSummary, AccordionDetails, List, ListItem, ListItemText, Skeleton
 } from '@mui/material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -20,20 +20,29 @@ const AnalysisResult = ({
 }) => {
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 4 }}>
-        <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-          <CircularProgress size={80} thickness={2} sx={{ color: '#00e5ff' }} />
-          <Box
-            sx={{
-              top: 0, left: 0, bottom: 0, right: 0,
-              position: 'absolute', display: 'flex',
-              alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <QrCodeScannerIcon sx={{ color: 'rgba(255,255,255,0.5)', fontSize: 30 }} />
+      <Box sx={{ mt: 3, textAlign: 'left', width: '100%' }}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: 3,
+            bgcolor: 'rgba(255,255,255,0.02)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 3,
+            boxShadow: 'none'
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <Skeleton variant="text" width="60%" height={40} sx={{ bgcolor: 'rgba(255,255,255,0.08)' }} />
+            <Skeleton variant="rounded" width={60} height={24} sx={{ bgcolor: 'rgba(255,255,255,0.08)', borderRadius: 1 }} />
           </Box>
-        </Box>
-        <Typography sx={{ mt: 3, letterSpacing: 1 }} variant="body1">ANALIZANDO AMENAZAS...</Typography>
+          
+          <Skeleton variant="text" width="80%" height={24} sx={{ mb: 2, bgcolor: 'rgba(255,255,255,0.08)' }} />
+          
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Skeleton variant="rounded" width="100%" height={48} sx={{ bgcolor: 'rgba(255,255,255,0.08)', borderRadius: 1 }} />
+            <Skeleton variant="rounded" width={52} height={48} sx={{ bgcolor: 'rgba(255,255,255,0.08)', borderRadius: 2 }} />
+          </Box>
+        </Paper>
       </Box>
     );
   }
